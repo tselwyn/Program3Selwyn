@@ -111,19 +111,15 @@ int main()
             // rotate cannon left
             if (keys[LEFT])
             {
-                cannonAngle += 2.5f;
+                cannonAngle += 6.0f;
                 if (cannonAngle > 256) cannonAngle = 256;
-                if (cannonAngle < 171 && cannonAngle > 85)
-                    cannonAngle = 171;
             }
 
             // rotate cannon right
             if (keys[RIGHT])
             {
-                cannonAngle -= 2.5f;
-                if (cannonAngle < 0) cannonAngle = 256;
-                if (cannonAngle < 171 && cannonAngle > 85)
-                    cannonAngle = 85;
+                cannonAngle -= 6.0f;
+                if (cannonAngle < 0) cannonAngle = 0;
             }
 
             // move all live projectiles and check if off screen
@@ -147,8 +143,12 @@ int main()
                 keys[SPACE] = true;
                 // calculate where the tip of the barrel is right now
                 {
-                    int tipX = cannonX + (int)(BARREL_LENGTH * sin(drawAngle));
-                    int tipY = cannonY - (int)(BARREL_LENGTH * cos(drawAngle));
+                    // barrel tip is about 15 pixels left of center in the unrotated image
+                    int tipOffsetX = -52;
+                    int tipOffsetY = -BARREL_LENGTH;
+                    // rotate the offset to match cannon angle
+                    int tipX = cannonX + (int)(tipOffsetX * cos(drawAngle) - tipOffsetY * sin(drawAngle));
+                    int tipY = cannonY + (int)(tipOffsetX * sin(drawAngle) + tipOffsetY * cos(drawAngle));
                     // find an inactive projectile and fire it from the tip
                     for (int i = 0; i < NUM_PROJECTILES; i++)
                     {
