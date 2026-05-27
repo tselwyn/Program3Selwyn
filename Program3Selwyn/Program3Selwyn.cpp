@@ -111,7 +111,7 @@ int main()
             // rotate cannon left
             if (keys[LEFT])
             {
-                cannonAngle += 0.8f;
+                cannonAngle += 2.5f;
                 if (cannonAngle > 256) cannonAngle = 256;
                 if (cannonAngle < 171 && cannonAngle > 85)
                     cannonAngle = 171;
@@ -120,7 +120,7 @@ int main()
             // rotate cannon right
             if (keys[RIGHT])
             {
-                cannonAngle -= 0.8f;
+                cannonAngle -= 2.5f;
                 if (cannonAngle < 0) cannonAngle = 256;
                 if (cannonAngle < 171 && cannonAngle > 85)
                     cannonAngle = 85;
