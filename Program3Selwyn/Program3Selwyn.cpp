@@ -18,17 +18,17 @@ const int WIDTH = 800;
 const int HEIGHT = 600;
 const float FPS = 60.0;
 
-// how many of each object we can have at once
+// game object counts
 const int NUM_PROJECTILES = 10;
 const int NUM_ALIENS = 5;
 
-// tracks which keys are being held down
+// keyboard tracking
 enum KEYS { UP, DOWN, LEFT, RIGHT, SPACE };
 bool keys[5] = { false, false, false, false, false };
 
 int main()
 {
-    // set up allegro
+    // --- allegro init ---
     if (!al_init())
     {
         fprintf(stderr, "failed to init allegro\n");
@@ -39,7 +39,7 @@ int main()
     al_init_primitives_addon();
     al_init_font_addon();
 
-    // create the window, event queue, and timer
+    // create display and event stuff
     ALLEGRO_DISPLAY* display = al_create_display(WIDTH, HEIGHT);
     ALLEGRO_EVENT_QUEUE* event_queue = al_create_event_queue();
     ALLEGRO_TIMER* timer = al_create_timer(1.0 / FPS);
@@ -51,36 +51,47 @@ int main()
         return -1;
     }
 
-    // register event sources so we can get input and timer events
+    // register event sources - display source needed for keyboard
     al_register_event_source(event_queue, al_get_display_event_source(display));
     al_register_event_source(event_queue, al_get_keyboard_event_source());
     al_register_event_source(event_queue, al_get_timer_event_source(timer));
 
-    // load all the game images
+    // load game images
     ALLEGRO_BITMAP* background = al_load_bitmap("background.png");
     ALLEGRO_BITMAP* cannonImg = al_load_bitmap("cannon.png");
     ALLEGRO_BITMAP* alienImg = al_load_bitmap("alien.png");
     ALLEGRO_BITMAP* projImg = al_load_bitmap("projectile.png");
     ALLEGRO_BITMAP* baseImg = al_load_bitmap("base.png");
 
-    // make sure every image loaded correctly
     if (!background || !cannonImg || !alienImg || !projImg || !baseImg)
     {
         fprintf(stderr, "failed to load one or more images\n");
-        if (!background) fprintf(stderr, "  missing: background.png\n");
-        if (!cannonImg) fprintf(stderr, "  missing: cannon.png\n");
-        if (!alienImg) fprintf(stderr, "  missing: alien.png\n");
-        if (!projImg) fprintf(stderr, "  missing: projectile.png\n");
-        if (!baseImg) fprintf(stderr, "  missing: base.png\n");
         return -1;
     }
 
-    bool done = false;
     bool redraw = true;
+    bool done = false;
+
+    // cannon sits at bottom center of screen
+    int cannonX = WIDTH / 2;
+    int cannonY = HEIGHT - 120;
+    float cannonAngle = 128.0f;  // starts pointing straight up in 0-256 range
+
+    // create arrays of game objects
+    Projectile projectiles[NUM_PROJECTILES];
+    Alien aliens[NUM_ALIENS];
+
+    // give each object its sprite
+    for (int i = 0; i < NUM_ALIENS; i++)
+        aliens[i].setImage(alienImg);
+    for (int i = 0; i < NUM_PROJECTILES; i++)
+        projectiles[i].setImage(projImg);
+
+    srand((unsigned)time(NULL));
 
     al_start_timer(timer);
 
-    // game loop runs until player exits
+    // --- main game loop ---
     while (!done)
     {
         ALLEGRO_EVENT ev;
@@ -89,24 +100,36 @@ int main()
         if (ev.type == ALLEGRO_EVENT_TIMER)
         {
             redraw = true;
-        }
-        else if (ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
-        {
-            done = true;
+
+            // rotate cannon left
+            if (keys[LEFT])
+            {
+                cannonAngle += 0.8f;
+                if (cannonAngle > 256) cannonAngle = 256;
+                if (cannonAngle < 171 && cannonAngle > 85)
+                    cannonAngle = 171;
+            }
+
+            // rotate cannon right
+            if (keys[RIGHT])
+            {
+                cannonAngle -= 0.8f;
+                if (cannonAngle < 0) cannonAngle = 256;
+                if (cannonAngle < 171 && cannonAngle > 85)
+                    cannonAngle = 85;
+            }
+
+            // move all live projectiles and check if off screen
+            for (int i = 0; i < NUM_PROJECTILES; i++)
+            {
+                projectiles[i].Update();
+                projectiles[i].IsOffScreen(WIDTH, HEIGHT);
+            }
         }
         else if (ev.type == ALLEGRO_EVENT_KEY_DOWN)
         {
             switch (ev.keyboard.keycode)
             {
-            case ALLEGRO_KEY_ESCAPE:
-                done = true;
-                break;
-            case ALLEGRO_KEY_UP:
-                keys[UP] = true;
-                break;
-            case ALLEGRO_KEY_DOWN:
-                keys[DOWN] = true;
-                break;
             case ALLEGRO_KEY_LEFT:
                 keys[LEFT] = true;
                 break;
@@ -115,6 +138,18 @@ int main()
                 break;
             case ALLEGRO_KEY_SPACE:
                 keys[SPACE] = true;
+                // find an inactive projectile and fire it
+                for (int i = 0; i < NUM_PROJECTILES; i++)
+                {
+                    if (!projectiles[i].getLive())
+                    {
+                        projectiles[i].Fire(cannonAngle, cannonX, cannonY);
+                        break;
+                    }
+                }
+                break;
+            case ALLEGRO_KEY_ESCAPE:
+                done = true;
                 break;
             }
         }
@@ -122,15 +157,6 @@ int main()
         {
             switch (ev.keyboard.keycode)
             {
-            case ALLEGRO_KEY_ESCAPE:
-                done = true;
-                break;
-            case ALLEGRO_KEY_UP:
-                keys[UP] = false;
-                break;
-            case ALLEGRO_KEY_DOWN:
-                keys[DOWN] = false;
-                break;
             case ALLEGRO_KEY_LEFT:
                 keys[LEFT] = false;
                 break;
@@ -142,8 +168,12 @@ int main()
                 break;
             }
         }
+        else if (ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
+        {
+            done = true;
+        }
 
-        // drawing section
+        // --- drawing ---
         if (redraw && al_is_event_queue_empty(event_queue))
         {
             redraw = false;
@@ -151,12 +181,26 @@ int main()
             // draw background
             al_draw_bitmap(background, 0, 0, 0);
 
+            // draw the base at bottom center
+            al_draw_bitmap(baseImg, (WIDTH / 2) - 150, cannonY + 20, 0);
+
+            // draw cannon rotated to current angle
+            float drawAngle = -((cannonAngle - 128.0f) / 128.0f) * (ALLEGRO_PI / 2.0f);
+            al_draw_rotated_bitmap(cannonImg, 60, 100, cannonX, cannonY,
+                drawAngle, 0);
+
+            // draw all live projectiles
+            for (int i = 0; i < NUM_PROJECTILES; i++)
+            {
+                projectiles[i].Draw();
+            }
+
             al_flip_display();
             al_clear_to_color(al_map_rgb(0, 0, 0));
         }
     }
 
-    // free everything before closing
+    // --- cleanup ---
     al_destroy_bitmap(background);
     al_destroy_bitmap(cannonImg);
     al_destroy_bitmap(alienImg);
