@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
+#include <cmath>
 #include "projectile.h"
 #include "alien.h"
 
@@ -21,6 +22,9 @@ const float FPS = 60.0;
 // game object counts
 const int NUM_PROJECTILES = 10;
 const int NUM_ALIENS = 5;
+
+// cannon barrel length from pivot to tip (measured from image)
+const int BARREL_LENGTH = 95;
 
 // keyboard tracking
 enum KEYS { UP, DOWN, LEFT, RIGHT, SPACE };
@@ -97,6 +101,9 @@ int main()
         ALLEGRO_EVENT ev;
         al_wait_for_event(event_queue, &ev);
 
+        // calculate cannon draw angle — used for rendering and firing
+        float drawAngle = -((cannonAngle - 128.0f) / 128.0f) * (ALLEGRO_PI / 2.0f);
+
         if (ev.type == ALLEGRO_EVENT_TIMER)
         {
             redraw = true;
@@ -138,13 +145,18 @@ int main()
                 break;
             case ALLEGRO_KEY_SPACE:
                 keys[SPACE] = true;
-                // find an inactive projectile and fire it
-                for (int i = 0; i < NUM_PROJECTILES; i++)
+                // calculate where the tip of the barrel is right now
                 {
-                    if (!projectiles[i].getLive())
+                    int tipX = cannonX + (int)(BARREL_LENGTH * sin(drawAngle));
+                    int tipY = cannonY - (int)(BARREL_LENGTH * cos(drawAngle));
+                    // find an inactive projectile and fire it from the tip
+                    for (int i = 0; i < NUM_PROJECTILES; i++)
                     {
-                        projectiles[i].Fire(cannonAngle, cannonX, cannonY);
-                        break;
+                        if (!projectiles[i].getLive())
+                        {
+                            projectiles[i].Fire(tipX, tipY, drawAngle);
+                            break;
+                        }
                     }
                 }
                 break;
@@ -185,7 +197,6 @@ int main()
             al_draw_bitmap(baseImg, (WIDTH / 2) - 150, cannonY + 20, 0);
 
             // draw cannon rotated to current angle
-            float drawAngle = -((cannonAngle - 128.0f) / 128.0f) * (ALLEGRO_PI / 2.0f);
             al_draw_rotated_bitmap(cannonImg, 60, 100, cannonX, cannonY,
                 drawAngle, 0);
 

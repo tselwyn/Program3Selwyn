@@ -15,7 +15,7 @@ public:
     Projectile();
     ~Projectile();
     void Draw();
-    void Fire(float cannonAngle, int cannonX, int cannonY);
+    void Fire(int tipX, int tipY, float drawAngle);
     void Update();
     bool IsOffScreen(int WIDTH, int HEIGHT);
 
@@ -28,9 +28,10 @@ public:
 private:
     int x;
     int y;
+    float dx;
+    float dy;
     bool live;
     int speed;
-    float radian_angle;
     ALLEGRO_BITMAP* image;
 };
 

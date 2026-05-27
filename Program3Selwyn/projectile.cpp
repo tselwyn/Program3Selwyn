@@ -13,9 +13,10 @@ Projectile::Projectile()
 {
     x = 0;
     y = 0;
+    dx = 0;
+    dy = 0;
     live = false;
     speed = BALL_SPEED;
-    radian_angle = 0;
     image = NULL;
 }
 
@@ -33,15 +34,16 @@ void Projectile::Draw()
     }
 }
 
-// fire from cannon position at the cannon's current angle
-void Projectile::Fire(float cannonAngle, int cannonX, int cannonY)
+// fire from the cannon tip position, using the cannon's draw angle for direction
+void Projectile::Fire(int tipX, int tipY, float drawAngle)
 {
     if (!live)
     {
-        x = cannonX;
-        y = cannonY;
-        // convert cannon angle to radians for trajectory
-        radian_angle = ((cannonAngle + 64.0f) / 0.711f) * ((2.0f * PI) / 360.0f);
+        x = tipX;
+        y = tipY;
+        // projectile travels in the direction the barrel is pointing
+        dx = speed * sin(drawAngle);
+        dy = -speed * cos(drawAngle);
         live = true;
     }
 }
@@ -51,8 +53,8 @@ void Projectile::Update()
 {
     if (live)
     {
-        x -= (int)(speed * cos(radian_angle));
-        y -= (int)(speed * sin(radian_angle));
+        x += (int)dx;
+        y += (int)dy;
     }
 }
 
