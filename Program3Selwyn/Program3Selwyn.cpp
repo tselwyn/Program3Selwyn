@@ -38,7 +38,7 @@ bool keys[5] = { false, false, false, false, false };
 
 int main()
 {
-    // --- allegro init ---
+    //  allegro init 
     if (!al_init())
     {
         fprintf(stderr, "failed to init allegro\n");
@@ -109,7 +109,7 @@ int main()
 
     al_start_timer(timer);
 
-    // --- main game loop ---
+    //  main game loop 
     while (!done)
     {
         ALLEGRO_EVENT ev;
@@ -259,7 +259,7 @@ int main()
             done = true;
         }
 
-        // --- drawing ---
+        //  drawing 
         if (redraw && al_is_event_queue_empty(event_queue))
         {
             redraw = false;
