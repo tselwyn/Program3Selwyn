@@ -26,6 +26,9 @@ const int NUM_ALIENS = 5;
 // cannon barrel length from pivot to tip (measured from image)
 const int BARREL_LENGTH = 95;
 
+// how often aliens spawn (in frames — 120 = every 2 seconds)
+const int SPAWN_RATE = 120;
+
 // keyboard tracking
 enum KEYS { UP, DOWN, LEFT, RIGHT, SPACE };
 bool keys[5] = { false, false, false, false, false };
@@ -81,6 +84,13 @@ int main()
     int cannonY = HEIGHT - 120;
     float cannonAngle = 128.0f;  // starts pointing straight up in 0-256 range
 
+    // score tracking
+    int score = 0;      // aliens shot down
+    int landed = 0;     // aliens that reached the base
+
+    // spawn timer — counts frames until next alien appears
+    int spawnTimer = 0;
+
     // create arrays of game objects
     Projectile projectiles[NUM_PROJECTILES];
     Alien aliens[NUM_ALIENS];
@@ -111,14 +121,14 @@ int main()
             // rotate cannon left
             if (keys[LEFT])
             {
-                cannonAngle += 6.0f;
+                cannonAngle += 8.0f;
                 if (cannonAngle > 256) cannonAngle = 256;
             }
 
             // rotate cannon right
             if (keys[RIGHT])
             {
-                cannonAngle -= 6.0f;
+                cannonAngle -= 8.0f;
                 if (cannonAngle < 0) cannonAngle = 0;
             }
 
@@ -127,6 +137,55 @@ int main()
             {
                 projectiles[i].Update();
                 projectiles[i].IsOffScreen(WIDTH, HEIGHT);
+            }
+
+            // spawn aliens on a timer
+            spawnTimer++;
+            if (spawnTimer >= SPAWN_RATE)
+            {
+                spawnTimer = 0;
+                // find a dead alien slot and spawn it
+                for (int i = 0; i < NUM_ALIENS; i++)
+                {
+                    if (!aliens[i].getLive())
+                    {
+                        aliens[i].Start(WIDTH, HEIGHT);
+                        break;
+                    }
+                }
+            }
+
+            // move all live aliens downward
+            for (int i = 0; i < NUM_ALIENS; i++)
+            {
+                aliens[i].Update();
+            }
+
+            // check if any alien reached the base
+            for (int i = 0; i < NUM_ALIENS; i++)
+            {
+                if (aliens[i].CollideBase(cannonY + 20))
+                {
+                    landed++;
+                }
+            }
+
+            // check projectile-alien collisions
+            for (int i = 0; i < NUM_PROJECTILES; i++)
+            {
+                if (projectiles[i].getLive())
+                {
+                    for (int j = 0; j < NUM_ALIENS; j++)
+                    {
+                        if (aliens[j].CollideBullet(projectiles[i].getX(), projectiles[i].getY()))
+                        {
+                            // alien got hit — kill the projectile too
+                            projectiles[i].setLive(false);
+                            score++;
+                            break;
+                        }
+                    }
+                }
             }
         }
         else if (ev.type == ALLEGRO_EVENT_KEY_DOWN)
@@ -143,8 +202,8 @@ int main()
                 keys[SPACE] = true;
                 // calculate where the tip of the barrel is right now
                 {
-                    // barrel tip is about 15 pixels left of center in the unrotated image
-                    int tipOffsetX = -52;
+                    // barrel tip is offset left of center in the unrotated image
+                    int tipOffsetX = -50;
                     int tipOffsetY = -BARREL_LENGTH;
                     // rotate the offset to match cannon angle
                     int tipX = cannonX + (int)(tipOffsetX * cos(drawAngle) - tipOffsetY * sin(drawAngle));
@@ -193,6 +252,12 @@ int main()
             // draw background
             al_draw_bitmap(background, 0, 0, 0);
 
+            // draw all live aliens
+            for (int i = 0; i < NUM_ALIENS; i++)
+            {
+                aliens[i].Draw();
+            }
+
             // draw the base at bottom center
             al_draw_bitmap(baseImg, (WIDTH / 2) - 150, cannonY + 20, 0);
 
@@ -205,6 +270,14 @@ int main()
             {
                 projectiles[i].Draw();
             }
+
+            // draw score and landed count at top of screen
+            char scoreText[50];
+            char landedText[50];
+            sprintf_s(scoreText, "Score: %d", score);
+            sprintf_s(landedText, "Landed: %d / 5", landed);
+            al_draw_text(font, al_map_rgb(255, 255, 255), 10, 10, 0, scoreText);
+            al_draw_text(font, al_map_rgb(255, 255, 255), WIDTH - 150, 10, 0, landedText);
 
             al_flip_display();
             al_clear_to_color(al_map_rgb(0, 0, 0));
